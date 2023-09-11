@@ -2,7 +2,18 @@
 #include <string>
 #include <fstream>
 #include <conio.h>
+#include <tuple>
 using namespace std;
+
+void lineSplit(string line, int numFields, string fields[]) {
+	int lastPlace;
+	for (int i = 0; i < numFields; i++)
+	{
+		lastPlace = line.find(";");
+		fields[i] = line.substr(0, lastPlace);
+		line = line.substr(lastPlace + 1);
+	}
+}
 
 void swapFiles(string fileName, string fileNameTemp) {
 	remove(fileName.c_str());
@@ -189,6 +200,151 @@ void addToQueue(string fileName, string fileNameTemp, int numFields, string elem
 	swapFiles(fileName, fileNameTemp);
 }
 
+tuple<string, int> searchPosition(string fileName, string identifier, bool deleted, string fields[])
+{
+	tuple<string, int> RecordAndPosition;
+	ifstream file(fileName);
+	string lineFromFile;
+	int position = 0;
+	if (countFields(fileName) == 11)
+	{
+		while (getline(file, lineFromFile))
+		{
+			lineSplit(lineFromFile, countFields(fileName), fields);
+			if (fields[6] == identifier)
+			{
+				if (((fields[10] == to_string(0) && !deleted) || (fields[10] == to_string(1) && deleted == true)) && position != 0)
+				{
+					file.close();
+					RecordAndPosition = make_tuple(lineFromFile, position);
+					return RecordAndPosition;
+				}
+			}
+			position++;
+		}
+	}
+	else
+	{
+		while (getline(file, lineFromFile))
+		{
+			lineSplit(lineFromFile, countFields(fileName), fields);
+			if (fields[6] == identifier && position != 0)
+			{
+				file.close();
+				RecordAndPosition = make_tuple(lineFromFile, position);
+				return RecordAndPosition;
+			}
+			position++;
+		}
+	}
+	file.close();
+	return make_tuple("", -1);
+}
+
+void modifyRecord(string fileName, string fileNameTemp, int numFields, string elements[], int position, int recordLen)
+{
+	int lineNum = 0;
+	string line, lineToFile = "";
+	for (int i = 0; i < numFields; i++)
+		lineToFile += elements[i] + ";";
+	while (lineToFile.length() < recordLen - 2)
+		lineToFile += " ";
+	lineToFile += "##";
+	ifstream file(fileName);
+	ofstream fileTemp(fileNameTemp);
+	while (lineNum != position)
+	{
+		getline(file, line);
+		fileTemp << line << endl;
+		lineNum++;
+	}
+	fileTemp << lineToFile << endl;
+	while (getline(file, line))
+	{
+		getline(file, line);
+		fileTemp << line << endl;
+	}
+	file.close();
+	fileTemp.close();
+	swapFiles(fileName, fileNameTemp);
+}
+
+void deleteRecord (string fileName, string fileNameTemp, int numFields, string elementsLine, int position, int recordLen, string elements[]) {
+	lineSplit(elementsLine, numFields, elements);
+	int lineNum = 0;
+	string line, lineToFile = "";
+	for (int i = 0; i < numFields - 1; i++)
+		lineToFile += elements[i] + ";";
+	lineToFile += "1;";
+	while (lineToFile.length() < recordLen - 2)
+		lineToFile += " ";
+	lineToFile += "##";
+	ifstream file(fileName);
+	ofstream fileTemp(fileNameTemp);
+	while (lineNum != position)
+	{
+		getline(file, line);
+		fileTemp << line << endl;
+		lineNum++;
+	}
+	fileTemp << lineToFile << endl;
+	while (getline(file, line))
+	{
+		getline(file, line);
+		fileTemp << line << endl;
+	}
+	file.close();
+	fileTemp.close();
+	swapFiles(fileName, fileNameTemp);
+}
+
+void recoverRecord(string fileName, string fileNameTemp, int numFields, string elementsLine, int position, int recordLen, string elements[]) {
+	lineSplit(elementsLine, numFields, elements);
+	int lineNum = 0;
+	string line, lineToFile = "";
+	for (int i = 0; i < numFields - 1; i++)
+		lineToFile += elements[i] + ";";
+	lineToFile += "0;";
+	while (lineToFile.length() < recordLen - 2)
+		lineToFile += " ";
+	lineToFile += "##";
+	ifstream file(fileName);
+	ofstream fileTemp(fileNameTemp);
+	while (lineNum != position)
+	{
+		getline(file, line);
+		fileTemp << line << endl;
+		lineNum++;
+	}
+	fileTemp << lineToFile << endl;
+	while (getline(file, line))
+	{
+		getline(file, line);
+		fileTemp << line << endl;
+	}
+	file.close();
+	fileTemp.close();
+	swapFiles(fileName, fileNameTemp);
+}
+
+void permDelete(string fileName, string fileNameTemp, string elements[]) {
+	ifstream file(fileName);
+	ofstream fileTemp(fileNameTemp);
+	string line;
+	int numFields = countFields(fileName);
+	getline(file, line);
+	fileTemp << line << endl;
+	while (getline(file, line))
+	{
+		lineSplit(line, numFields, elements);
+		if (elements[10] == "0")
+			fileTemp << line << endl;
+	}
+	file.close();
+	fileTemp.close();
+	swapFiles(fileName, fileNameTemp);
+}
+
 int main()
 {
 	system("chcp.com 1252");
@@ -197,8 +353,8 @@ int main()
 	if (!checkFixedLen(fileName, recordLen))
 		createFixedLen(fileName, fileNameTemp, recordLen);
 	bool keepGoing = true;
-	int numFields;
-	string maxLenghts[12], inputs[11], fieldsNames[11];
+	int numFields, checkEd[11], firstField, secondField, thirdField;
+	string maxLenghts[12], inputs[11], fieldsNames[11], fields[11], firstFieldS, secondFieldS, thirdFieldS, lineFromFile;
 	string basicOptions = "Opzioni:\n1 - Aggiunta Miovalore\n2 - Conta Campi\n3 - Calcola Lunghezza Campi/Record\n4 - Aggiunta Record in coda\n5 - Visualizza Campi\n6 - Ricerca Record\n7 - Modifica Record\n8 - Cancella Record\n0 - Chiusura Programma\n\n";
 	do {
 		system("CLS");
@@ -296,12 +452,11 @@ int main()
 					}
 					break;
 				#pragma endregion
+				#pragma region 5 - Visualizza Campi
 				case 5:
 					system("CLS");
-					cout << "Inserire numero del primo campo\n");
-					string firstFieldS;
+					cout << "Inserire numero del primo campo\n\n";
 					getline(cin, firstFieldS);
-					int firstField;
 					if (firstFieldS.length() == 1 && firstFieldS[0] > 47 && firstFieldS[0] < 58)
 						firstField = stoi(firstFieldS);
 					else
@@ -313,40 +468,35 @@ int main()
 						break;
 					}
 					system("CLS");
-					cout << "Inserire numero del primo campo\n");
-					string secondFieldS = Console.ReadLine();
+					cout << "Inserire numero del secondo campo\n\n";
+					getline(cin, secondFieldS);
 					int secondField;
-					if (secondFieldS.Length == 1 && secondFieldS[0] > 47 && secondFieldS[0] < 58)
-						secondField = int.Parse(secondFieldS);
+					if (secondFieldS.length() == 1 && secondFieldS[0] > 47 && secondFieldS[0] < 58)
+						secondField = stoi(secondFieldS);
 					else
 					{
 						system("CLS");
-						Console.ForegroundColor = ConsoleColor.Red;
-						cout << "Il campo inserito non è valido");
-						Console.ResetColor();
-						cout << "\nPremere un tasto per continuare\n");
-						Console.ReadKey();
+						cout << "Il campo inserito non è valido\n";
+						cout << "\nPremere un tasto per continuare\n\n";
+						_getch();
 						break;
 					}
 					system("CLS");
-					cout << "Inserire numero del primo campo\n");
-					string thirdFieldS = Console.ReadLine();
+					cout << "Inserire numero del terzo campo\n\n";
+					getline(cin, thirdFieldS);
 					int thirdField;
-					if (thirdFieldS.Length == 1 && thirdFieldS[0] > 47 && thirdFieldS[0] < 58)
-						thirdField = int.Parse(thirdFieldS);
+					if (thirdFieldS.length() == 1 && thirdFieldS[0] > 47 && thirdFieldS[0] < 58)
+						thirdField = stoi(thirdFieldS);
 					else
 					{
 						system("CLS");
-						Console.ForegroundColor = ConsoleColor.Red;
-						cout << "Il campo inserito non è valido");
-						Console.ResetColor();
-						cout << "\nPremere un tasto per continuare\n");
-						Console.ReadKey();
+						cout << "Il campo inserito non è valido\n";
+						cout << "\nPremere un tasto per continuare\n\n";
+						_getch();
 						break;
 					}
-					int numFieldsVIS = functions.countFields(fileName);
-					int[] checkEd = new int[numFieldsVIS];
-					for (int i = 0; i < numFieldsVIS; i++)
+					numFields = countFields(fileName);
+					for (int i = 0; i < numFields; i++)
 						checkEd[i] = 0;
 					if (firstField == 0 || secondField == 0 || thirdField == 0) checkEd[0] = 1;
 					if (firstField == 1 || secondField == 1 || thirdField == 1) checkEd[1] = 1;
@@ -357,70 +507,282 @@ int main()
 					if (firstField == 6 || secondField == 6 || thirdField == 6) checkEd[6] = 1;
 					if (firstField == 7 || secondField == 7 || thirdField == 7) checkEd[7] = 1;
 					if (firstField == 8 || secondField == 8 || thirdField == 8) checkEd[8] = 1;
-					if (numFieldsVIS > 9)
+					if (numFields > 9)
 						if (firstField == 9 || secondField == 9 || thirdField == 9) checkEd[9] = 1;
 						else
 							if (firstField == 9 || secondField == 9 || thirdField == 9)
 							{
 								system("CLS");
-								Console.ForegroundColor = ConsoleColor.Red;
-								cout << "Il campo Miovalore non è presente nel file");
-								Console.ResetColor();
-								cout << "\nPremere un tasto per continuare\n");
-								Console.ReadKey();
+								cout << "Il campo Miovalore non è presente nel file";
+								cout << "\nPremere un tasto per continuare\n";
+								_getch();
 								break;
 							}
-					string[] names = functions.searchFieldsNames(fileName);
+					searchFieldsNames(fileName, fieldsNames);
 					system("CLS");
-					using (StreamReader csvReader = File.OpenText(fileName))
 					{
-						string lineFromFile;
-						lineFromFile = csvReader.ReadLine();
-						while ((lineFromFile = csvReader.ReadLine()) != null)
+						ifstream file(fileName);
+						getline(file, lineFromFile);
+						while (getline(file, lineFromFile))
 						{
-							string[] fieldsVIS = lineFromFile.Split(';');
-							if (numFieldsVIS == 11)
+							lineSplit(lineFromFile, numFields, fields);
+							if (numFields == 11)
 							{
-								if (fieldsVIS[10] == "0")
+								if (fields[10] == "0")
 								{
-									cout << );
-									for (int i = 0; i < numFieldsVIS; i++)
+									cout << endl;
+									for (int i = 0; i < numFields; i++)
 									{
 										if (checkEd[i] == 1)
 										{
-											Console.Write($"{names[i]}: ");
-											Console.ForegroundColor = ConsoleColor.Green;
-											Console.Write($"{fieldsVIS[i]} ");
-											Console.ResetColor();
+											cout << fieldsNames[i] << ": " << fields[i] << " ";
 										}
 									}
 								}
 							}
 							else
 							{
-								cout << );
-								for (int i = 0; i < numFieldsVIS; i++)
+								cout << endl;
+								for (int i = 0; i < numFields; i++)
 								{
 									if (checkEd[i] == 1)
 									{
-										Console.Write($"{names[i]}: ");
-										Console.ForegroundColor = ConsoleColor.Green;
-										Console.Write($"{fieldsVIS[i]} ");
+										cout << fieldsNames[i] << ": " << fields[i] << " ";
 									}
 								}
 							}
 						}
-						csvReader.Close();
-						cout << "\n\nPremere un tasto per continuare\n");
-						Console.ReadKey();
+						file.close();
+					}
+					cout << "\n\nPremere un tasto per continuare\n";
+					_getch();
+					break;
+				#pragma endregion
+				#pragma region 6 - Ricerca Record
+				case 6:
+					system("CLS");
+					cout << "Inserire Identificatore in OpenStreetMap\n\n";
+					{
+						string idOSM;
+						getline(cin, idOSM);
+						tuple<string, int> RecordAndPosition = searchPosition(fileName, idOSM, false, fields);
+						if (get<1>(RecordAndPosition) == -1)
+						{
+							system("CLS");
+							cout << "Il record cercato non è presente\n";
+							cout << "\nPremere un tasto per continuare\n\n";
+							_getch();
+						}
+						else
+						{
+							system("CLS");
+							cout << "Il record " << get<0>(RecordAndPosition) << " è presente in posizione "<< get<1>(RecordAndPosition) << endl;
+							cout << "\nPremere un tasto per continuare\n\n";
+							_getch();
+						}
 					}
 					break;
-				case 6:
-					break;
+					#pragma endregion
+				#pragma region 7 - Modifica Record
 				case 7:
+					system("CLS");
+					cout << "Inserire Identificatore in OpenStreetMap\n\n";
+					{
+						string idOSM;
+						getline(cin, idOSM);
+						tuple<string, int> RecordAndPosition = searchPosition(fileName, idOSM, false, fields);
+						if (get<1>(RecordAndPosition) == -1)
+						{
+							system("CLS");
+							cout << "Il record cercato non è presente\n";
+							cout << "\nPremere un tasto per continuare\n\n";
+							_getch();
+						}
+						else
+						{
+							numFields = countFields(fileName);
+							searchFieldsNames(fileName, fieldsNames);
+							for (int i = 0; i < 9; i++)
+							{
+								system("CLS");
+								cout << "Inserire i dati del campo \"" << fieldsNames[i] << "\" da aggiungere\n\n";
+								getline(cin, inputs[i]);
+							}
+							if (checkMyValue(fileName))
+							{
+								int ranValue = rand() % (20 - 10 + 1) + 10;
+								inputs[9] = to_string(ranValue);
+								inputs[10] = "0";
+							}
+							if (!checkInputLen(numFields, inputs))
+							{
+								if (!checkMyValue(fileName))
+								{
+									system("CLS");
+									cout << "Errore: uno o più campi sono vuoti o troppo lunghi, la lunghezza totale non deve superare i 242 caratteri\n";
+									cout << "\nPremere un tasto per continuare\n\n";
+									_getch();
+								}
+								else
+								{
+									system("CLS");
+									cout << "Errore: uno o più campi sono vuoti o troppo lunghi, la lunghezza totale non deve superare i 245 caratteri\n";
+									cout << "\nPremere un tasto per continuare\n\n";
+									_getch();
+								}
+							}
+							else if (!checkInputChars(numFields, inputs))
+							{
+								system("CLS");
+								cout << "Uno o più campi contengono caratteri non validi \n\n';', '#', '\\'\n";
+								cout << "\nPremere un tasto per continuare\n\n";
+								_getch();
+							}
+							else
+							{
+								modifyRecord(fileName, fileNameTemp, numFields, inputs, get<1>(RecordAndPosition), recordLen);
+							}
+						}
+					}
 					break;
+				#pragma endregion
+				#pragma region 8 - Cancella Record
 				case 8:
+					bool valid;
+					do
+					{
+						system("CLS");
+						cout <<"Opzioni cancellazione\n1 - Cancella record\n2 - Recupera record\n3 - Ricompatta database\n\n";
+						getline(cin, optionsSTR);
+						cin.clear();
+						if (!checkConversionStrToInt(optionsSTR)) {
+							system("CLS");
+							cout << "Inserire un numero valido\n" << endl;
+							_getch();
+						}
+						else
+						{
+							optionsINT = stoi(optionsSTR);
+							switch (optionsINT)
+							{
+							case 1:
+								valid = true;
+								if (!checkMyValue(fileName))
+								{
+									system("CLS");
+									cout << "Nel file non sono presenti i campi Miovalore e Cancellazione Logica";
+									cout << "\nPremere un tasto per continuare\n";
+									_getch();
+								}
+								else
+								{
+									system("CLS");
+									cout << "Inserire Identificatore in OpenStreetMap\n\n";
+									string idOSM;
+									getline(cin, idOSM);
+									tuple<string, int> RecordAndPosition = searchPosition(fileName, idOSM, false, fields);
+									if (get<1>(RecordAndPosition) == -1)
+									{
+										system("CLS");
+										cout << "Il record cercato non è presente\n";
+										cout << "\nPremere un tasto per continuare\n\n";
+										_getch();
+									}
+									else
+									{
+										numFields = countFields(fileName);
+										deleteRecord(fileName, fileNameTemp, numFields, get<0>(RecordAndPosition), get<1>(RecordAndPosition), recordLen, fields);
+									}
+								}
+								break;
+							case 2:
+								valid = true;
+								if (!checkMyValue(fileName))
+								{
+									system("CLS");
+									cout << "Nel file non sono presenti i campi Miovalore e Cancellazione Logica\n";
+									cout << "\nPremere un tasto per continuare\n";
+									_getch();
+								}
+								else
+								{
+									system("CLS");
+									cout << "Inserire Identificatore in OpenStreetMap\n\n";
+									string idOSMDEL;
+									getline(cin, idOSMDEL);
+									tuple<string, int> RecordAndPosition = searchPosition(fileName, idOSMDEL, true, fields);
+									if (get<1>(RecordAndPosition) == -1)
+									{
+										system("CLS");
+										cout << "Il record cercato non è presente\n";
+										cout << "\nPremere un tasto per continuare\n\n";
+										_getch();
+									}
+									else
+									{
+										numFields = countFields(fileName);
+										recoverRecord(fileName, fileNameTemp, numFields, get<0>(RecordAndPosition), get<1>(RecordAndPosition), recordLen, fields);
+									}
+								}
+								break;
+							case 3:
+								valid = true;
+								if (!checkMyValue(fileName))
+								{
+									system("CLS");
+									cout << "Nel file non sono presenti i campi Miovalore e Cancellazione Logica\n";
+									cout << "\nPremere un tasto per continuare\n\n";
+									_getch();
+								}
+								else
+								{
+									bool validCOMP;
+									do
+									{
+										system("CLS");
+										cout << "Cancellare definitivamente i record eliminati\n1 - Si\n0 - No\n\n";
+										getline(cin, optionsSTR);
+										cin.clear();
+										if (!checkConversionStrToInt(optionsSTR)) {
+											system("CLS");
+											cout << "Inserire un numero valido\n" << endl;
+											_getch();
+											break;
+										}
+										else
+										{
+											optionsINT = stoi(optionsSTR);
+											switch (optionsINT)
+											{
+											case 1:
+												validCOMP = true;
+												permDelete(fileName, fileNameTemp, fields);
+												break;
+											case 0:
+												validCOMP = true;
+												break;
+											default:
+												validCOMP = false;
+												system("CLS");
+												cout << "Opzione non valida\n\nPremere un tasto per continuare\n\n";
+												_getch();
+												break;
+											}
+										}
+									} while (!validCOMP);
+								}
+								break;
+							default:
+								valid = false;
+								system("CLS");
+								cout << "Opzione non valida\n\nPremere un tasto per continuare\n\n";
+								_getch();
+								break;
+							}
+						}
+					} while (!valid);
 					break;
+				#pragma endregion
 				#pragma region 0 - Uscita
 				case 0:
 					bool validEXIT;
