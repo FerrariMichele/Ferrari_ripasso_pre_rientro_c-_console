@@ -180,13 +180,7 @@ bool checkInputChars(int numField, string elements[])
 }
 
 void addToQueue(string fileName, string fileNameTemp, int numFields, string elements[], int recordLen) {
-	ifstream file(fileName);
-	ofstream fileTemp(fileNameTemp);
 	string line, lineToFile = "";
-	while (getline(file, line))
-	{
-		fileTemp << line << endl;
-	}
 	for (int i = 0; i < numFields; i++)
 	{
 		lineToFile += elements[i] + ";";
@@ -194,11 +188,11 @@ void addToQueue(string fileName, string fileNameTemp, int numFields, string elem
 	while (lineToFile.length() < recordLen - 2)
 		lineToFile += " ";
 	lineToFile += "##";
-	fileTemp << lineToFile << endl;
+	fstream file(fileName);
+	file.seekg(0, ios::end);
+	file << lineToFile << endl;
 	file.close();
-	fileTemp.close();
-	swapFiles(fileName, fileNameTemp);
-}
+	}
 
 tuple<string, int> searchPosition(string fileName, string identifier, bool deleted, string fields[])
 {
@@ -250,23 +244,10 @@ void modifyRecord(string fileName, string fileNameTemp, int numFields, string el
 	while (lineToFile.length() < recordLen - 2)
 		lineToFile += " ";
 	lineToFile += "##";
-	ifstream file(fileName);
-	ofstream fileTemp(fileNameTemp);
-	while (lineNum != position)
-	{
-		getline(file, line);
-		fileTemp << line << endl;
-		lineNum++;
-	}
-	fileTemp << lineToFile << endl;
-	while (getline(file, line))
-	{
-		getline(file, line);
-		fileTemp << line << endl;
-	}
+	fstream file(fileName);
+	file.seekg((recordLen + 2) * position, ios::beg);
+	file << lineToFile << endl;
 	file.close();
-	fileTemp.close();
-	swapFiles(fileName, fileNameTemp);
 }
 
 void deleteRecord (string fileName, string fileNameTemp, int numFields, string elementsLine, int position, int recordLen, string elements[]) {
@@ -279,23 +260,10 @@ void deleteRecord (string fileName, string fileNameTemp, int numFields, string e
 	while (lineToFile.length() < recordLen - 2)
 		lineToFile += " ";
 	lineToFile += "##";
-	ifstream file(fileName);
-	ofstream fileTemp(fileNameTemp);
-	while (lineNum != position)
-	{
-		getline(file, line);
-		fileTemp << line << endl;
-		lineNum++;
-	}
-	fileTemp << lineToFile << endl;
-	while (getline(file, line))
-	{
-		getline(file, line);
-		fileTemp << line << endl;
-	}
+	fstream file(fileName);
+	file.seekg((recordLen + 2) * position, ios::beg);
+	file << lineToFile << endl;
 	file.close();
-	fileTemp.close();
-	swapFiles(fileName, fileNameTemp);
 }
 
 void recoverRecord(string fileName, string fileNameTemp, int numFields, string elementsLine, int position, int recordLen, string elements[]) {
@@ -308,23 +276,10 @@ void recoverRecord(string fileName, string fileNameTemp, int numFields, string e
 	while (lineToFile.length() < recordLen - 2)
 		lineToFile += " ";
 	lineToFile += "##";
-	ifstream file(fileName);
-	ofstream fileTemp(fileNameTemp);
-	while (lineNum != position)
-	{
-		getline(file, line);
-		fileTemp << line << endl;
-		lineNum++;
-	}
-	fileTemp << lineToFile << endl;
-	while (getline(file, line))
-	{
-		getline(file, line);
-		fileTemp << line << endl;
-	}
+	fstream file(fileName);
+	file.seekg((recordLen + 2) * position, ios::beg);
+	file << lineToFile << endl;
 	file.close();
-	fileTemp.close();
-	swapFiles(fileName, fileNameTemp);
 }
 
 void permDelete(string fileName, string fileNameTemp, string elements[]) {
@@ -569,16 +524,14 @@ int main()
 						if (get<1>(RecordAndPosition) == -1)
 						{
 							system("CLS");
-							cout << "Il record cercato non è presente\n";
-							cout << "\nPremere un tasto per continuare\n\n";
-							_getch();
+							cout << "Il record cercato non è presente" << endl << endl;
+							system("pause");
 						}
 						else
 						{
 							system("CLS");
-							cout << "Il record " << get<0>(RecordAndPosition) << " è presente in posizione "<< get<1>(RecordAndPosition) << endl;
-							cout << "\nPremere un tasto per continuare\n\n";
-							_getch();
+							cout << "Il record " << get<0>(RecordAndPosition) << " è presente in posizione "<< get<1>(RecordAndPosition) << endl << endl;
+							system("pause");
 						}
 					}
 					break;
